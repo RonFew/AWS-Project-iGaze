@@ -10,7 +10,7 @@ ESC = 27 #ascii for escape on keyboard
 
 L_EYE_MARKS = [36, 37, 38, 39, 40, 41]
 R_EYE_MARKS = [42, 43, 44, 45, 46, 47]
-BLINK_VAL = 7
+BLINK_VAL = 6
 
 FONT = cv2.FONT_HERSHEY_SCRIPT_COMPLEX
 
@@ -28,7 +28,7 @@ def get_blinking_ratio(eye_points, facial_landmarks):
     center_top = midpoint(facial_landmarks.part(eye_points[1]), facial_landmarks.part(eye_points[2])) # detect mid of top part of eye
     center_bottom = midpoint(facial_landmarks.part(eye_points[5]), facial_landmarks.part(eye_points[4])) # detect mid of bottom part of eye
 
-    #    to sew corssed lines on camera
+    #    to see corssed lines on camera
     #hor_line = cv2.line(frame, left_point, right_point, REC_COLOR,  REC_THIC) # draw a line between ends of eye
     #ver_line = cv2.line(frame, center_top, center_bottom, REC_COLOR,  REC_THIC) # draw a line between ends of eye
 
@@ -72,19 +72,22 @@ while True:
         cv2.polylines(mask, [l_eye_region], True, 255, 2) # draw the eye frame
         cv2.fillPoly(mask, [l_eye_region], 255)
 
+        l_eye = cv2.bitwise_and(gray, gray, mask=mask)
+
         min_x = numpy.min(l_eye_region[:, 0])
         max_x = numpy.max(l_eye_region[:, 0])
         min_y = numpy.min(l_eye_region[:, 1])
         max_y = numpy.max(l_eye_region[:, 1]) # eye borders
 
-        eye = frame[min_y : max_y, min_x: max_x] # cut only eye to frame
-        eye_gray = cv2.cvtColor(eye, cv2.COLOR_BGR2GRAY) # gray scale
+        eye_gray = l_eye[min_y : max_y, min_x: max_x] # cut only eye to frame
+        #eye = frame[min_y : max_y, min_x: max_x] # cut only eye to frame
+        #eye_gray = cv2.cvtColor(eye, cv2.COLOR_BGR2GRAY) # gray scale
         _, threshold_eye = cv2.threshold(eye_gray, 70, 255, cv2.THRESH_BINARY)
 
-        cv2.imshow("EYE", cv2.resize(eye, None, fx=10, fy=10)) # window of only eye
+        cv2.imshow("EYE", cv2.resize(eye_gray, None, fx=10, fy=10)) # window of only eye
         cv2.imshow("THRESHOLD", cv2.resize(threshold_eye, None, fx=10, fy=10)) # window of only eye gray scale
 
-        cv2.imshow("MASK", mask) # cover all in black
+        cv2.imshow("left eye", l_eye) # cover all in black
 
     #show camera
     mirrored_frame = cv2.flip(frame, 1) # Flip the frame horizontally (mirror effect) 
