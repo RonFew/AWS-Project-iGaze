@@ -10,7 +10,7 @@ ESC = 27 #ascii for escape on keyboard
 
 L_EYE_MARKS = [36, 37, 38, 39, 40, 41]
 R_EYE_MARKS = [42, 43, 44, 45, 46, 47]
-BLINK_VAL = 8
+BLINK_VAL = 7
 
 FONT = cv2.FONT_HERSHEY_SCRIPT_COMPLEX
 
@@ -28,8 +28,9 @@ def get_blinking_ratio(eye_points, facial_landmarks):
     center_top = midpoint(facial_landmarks.part(eye_points[1]), facial_landmarks.part(eye_points[2])) # detect mid of top part of eye
     center_bottom = midpoint(facial_landmarks.part(eye_points[5]), facial_landmarks.part(eye_points[4])) # detect mid of bottom part of eye
 
-    hor_line = cv2.line(frame, left_point, right_point, REC_COLOR,  REC_THIC) # draw a line between ends of eye
-    ver_line = cv2.line(frame, center_top, center_bottom, REC_COLOR,  REC_THIC) # draw a line between ends of eye
+    #    to sew corssed lines on camera
+    #hor_line = cv2.line(frame, left_point, right_point, REC_COLOR,  REC_THIC) # draw a line between ends of eye
+    #ver_line = cv2.line(frame, center_top, center_bottom, REC_COLOR,  REC_THIC) # draw a line between ends of eye
 
     hor_line_lenght = hypot((left_point[0] - right_point[0]), (left_point[1] - right_point[1])) # cal length between sided fo eye
     ver_line_lenght = hypot((center_top[0] - center_bottom[0]), (center_top[1] - center_bottom[1])) # cal length between bottom and top
@@ -54,6 +55,36 @@ while True:
 
         if blinking_ratio > BLINK_VAL: 
             cv2.putText(frame, "BLINK", (50, 150), FONT, REC_THIC, REC_COLOR) #show indication when blinking
+        
+        #gaze
+        l_eye_region = numpy.array([(landmarks.part(L_EYE_MARKS[0]).x,landmarks.part(L_EYE_MARKS[0]).y),
+                                    (landmarks.part(L_EYE_MARKS[1]).x,landmarks.part(L_EYE_MARKS[1]).y),
+                                    (landmarks.part(L_EYE_MARKS[2]).x,landmarks.part(L_EYE_MARKS[2]).y),
+                                    (landmarks.part(L_EYE_MARKS[3]).x,landmarks.part(L_EYE_MARKS[3]).y),
+                                    (landmarks.part(L_EYE_MARKS[4]).x,landmarks.part(L_EYE_MARKS[4]).y),
+                                    (landmarks.part(L_EYE_MARKS[5]).x,landmarks.part(L_EYE_MARKS[5]).y)], numpy.int32) # define points to connect 
+        #cv2.polylines(frame, [l_eye_region], True, (0 ,0 ,255), REC_THIC) # draw the eye frame
+
+        height, width, _ = frame.shape
+        mask = numpy.zeros((height, width), numpy.uint8) # mask only the eye to be white
+        
+
+        cv2.polylines(mask, [l_eye_region], True, 255, 2) # draw the eye frame
+        cv2.fillPoly(mask, [l_eye_region], 255)
+
+        min_x = numpy.min(l_eye_region[:, 0])
+        max_x = numpy.max(l_eye_region[:, 0])
+        min_y = numpy.min(l_eye_region[:, 1])
+        max_y = numpy.max(l_eye_region[:, 1]) # eye borders
+
+        eye = frame[min_y : max_y, min_x: max_x] # cut only eye to frame
+        eye_gray = cv2.cvtColor(eye, cv2.COLOR_BGR2GRAY) # gray scale
+        _, threshold_eye = cv2.threshold(eye_gray, 70, 255, cv2.THRESH_BINARY)
+
+        cv2.imshow("EYE", cv2.resize(eye, None, fx=10, fy=10)) # window of only eye
+        cv2.imshow("THRESHOLD", cv2.resize(threshold_eye, None, fx=10, fy=10)) # window of only eye gray scale
+
+        cv2.imshow("MASK", mask) # cover all in black
 
     #show camera
     mirrored_frame = cv2.flip(frame, 1) # Flip the frame horizontally (mirror effect) 
@@ -61,7 +92,7 @@ while True:
  
     #end sesssion
     key = cv2.waitKey(1) # if 'ESC' on keyboard is pressed, exit web cam
-    if key  == ESC:
+    if key == ESC:
         break
 
     elif cv2.getWindowProperty("Camera", cv2.WND_PROP_VISIBLE) < 1: # Check if the window was closed via the "X" button
