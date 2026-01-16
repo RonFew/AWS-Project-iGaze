@@ -1,4 +1,4 @@
-// 1. Fixed Import: Must point to the specific package on jsDelivr
+// At the very top of script.js
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net";
 
 let faceLandmarker;
@@ -6,58 +6,68 @@ let lastGaze = { x: 0, y: 0 };
 let isBlinking = false;
 
 async function setupMediaPipe() {
-    // 2. Fixed WASM Path: Must point to the specific WASM folder
-    const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/wasm"
-    );
-    
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-            delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        outputFaceBlendshapes: true
-    });
+    try {
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/wasm"
+        );
+        
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com",
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            outputFaceBlendshapes: true
+        });
 
-    initWebGazer();
-}
-
-function initWebGazer() {
-    // Check if webgazer is loaded via script tag in HTML
-    if (typeof webgazer !== 'undefined') {
-        webgazer.setGazeListener((data, elapsedTime) => {
-            if (data) {
-                lastGaze = { x: data.x, y: data.y };
-            }
-        }).begin();
-
-        // Use a small delay to ensure WebGazer has created the video element
-        setTimeout(() => {
-            const video = document.getElementById('webgazerVideoFeed');
-            if (video) detectBlink(video);
-        }, 1000);
+        console.log("MediaPipe Ready");
+        initWebGazer();
+    } catch (error) {
+        console.error("MediaPipe initialization failed:", error);
     }
 }
 
+function initWebGazer() {
+    // WebGazer is global, but we wait for it to be defined
+    if (typeof webgazer === 'undefined') {
+        setTimeout(initWebGazer, 100);
+        return;
+    }
+
+    webgazer.setGazeListener((data) => {
+        if (data) {
+            lastGaze = { x: data.x, y: data.y };
+        }
+    }).begin();
+
+    // Hide the WebGazer video feedback if you only want the dot
+    webgazer.showVideoPreview(false).showPredictionPoints(true);
+
+    // Wait for WebGazer to create its video element before attaching MediaPipe
+    const checkVideo = setInterval(() => {
+        const video = document.getElementById('webgazerVideoFeed');
+        if (video) {
+            clearInterval(checkVideo);
+            detectBlink(video);
+        }
+    }, 500);
+}
+
 async function detectBlink(video) {
-    if (!faceLandmarker || video.paused || video.ended) {
+    if (video.paused || video.ended) {
         requestAnimationFrame(() => detectBlink(video));
         return;
     }
 
-    const startTimeMs = performance.now();
-    const results = await faceLandmarker.detectForVideo(video, startTimeMs);
+    const results = await faceLandmarker.detectForVideo(video, performance.now());
 
-    // 3. Fixed Data Access: results.faceBlendshapes is an array of objects
     if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+        // Access the first face's categories
         const shapes = results.faceBlendshapes[0].categories;
+        const left = shapes.find(s => s.categoryName === "eyeBlinkLeft").score;
+        const right = shapes.find(s => s.categoryName === "eyeBlinkRight").score;
         
-        const leftBlink = shapes.find(s => s.categoryName === "eyeBlinkLeft")?.score || 0;
-        const rightBlink = shapes.find(s => s.categoryName === "eyeBlinkRight")?.score || 0;
-        const blinkScore = (leftBlink + rightBlink) / 2;
-
-        if (blinkScore > 0.4) { 
+        if ((left + right) / 2 > 0.4) {
             if (!isBlinking) {
                 isBlinking = true;
                 handleBlinkClick();
@@ -66,14 +76,13 @@ async function detectBlink(video) {
             isBlinking = false;
         }
     }
-
     requestAnimationFrame(() => detectBlink(video));
 }
 
 function handleBlinkClick() {
-    console.log("Blink Click at:", lastGaze.x, lastGaze.y);
     const element = document.elementFromPoint(lastGaze.x, lastGaze.y);
-    if (element && typeof element.click === 'function') {
+    if (element && element.classList.contains('tile')) {
+        console.log("Blink selected tile:", element.getAttribute('data-word'));
         element.click();
     }
 }
