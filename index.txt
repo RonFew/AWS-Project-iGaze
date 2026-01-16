@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://webgazer.cs.brown.edu/webgazer.js?" defer></script>
+  <script src="script.js" defer></script>
+  <title>iGaze — Demo Board</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .gaze-hover{outline:5px solid rgba(0,180,120,.55)!important;}
+    .gaze-pending{outline:5px dashed rgba(255,140,0,.75)!important;}
+
+    /* Fallback styling so the typed area is always visible even if css/styles.css is missing */
+    .sentenceRow{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+    .sentence{min-height:56px;flex:1;min-width:260px;background:#fff;border:2px solid rgba(0,0,0,.10);border-radius:16px;padding:12px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+    .typedBox{min-height:56px;flex:1;min-width:260px;background:#fff;border:2px solid rgba(0,0,0,.10);border-radius:16px;padding:12px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+    .placeholder{opacity:.65;}
+  </style>
+
+</head>
+
+<body>
+  <header>
+    <div class="logo">
+        <img src="images/igaze1.png" alt="iGaze Logo">
+        <span>iGaze</span>
+    </div>
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+        </ul>
+    </nav>
+</header>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Empowering Communication Through Eye Tracking</h1>
+      <p>Use the large tiles and on-screen keyboard to build a message. This demo uses mouse clicks today—later your team can map gaze + blink to the same selection events.</p>
+      <div class="heroActions">
+        <a class="btn primary" href="about.html">Learn more about iGaze →</a>
+        <button class="btn primary" id="btnSpeakHero" type="button">🔊 Speak message</button>
+      </div>
+    </section>
+    <section class="card">
+      <div class="instructions">
+        <div>
+          <h2>Quick Instructions</h2>
+          <ol class="steps">
+  <li><b>Select tiles</b> (Yes/No/Stop/Please/Food/Drink/More/Less) to add words to the message bar.</li>
+  <li>Use the <b>keyboard</b> to type extra words (names, places, custom needs).</li>
+  <li>Tap a <b>suggestion</b> to auto-fill common phrases.</li>
+  <li>Press <b>Speak</b> to hear the message.</li>
+
+  <li><b>Eye Tracking Calibration (Silent Click Method):</b> When prompted, click <b>Allow</b> to enable camera access (eye tracking starts immediately).</li>
+  <li>A dot will follow your cursor.</li>
+  <li>To calibrate: <b>look anywhere</b> on the screen and <b>click where you are looking</b>.</li>
+  <li>Repeat several clicks in different areas for better accuracy.</li>
+  <li>If accuracy is off, <b>refresh the page</b> and calibrate again.</li>
+</ol>
+
+        </div>
+        <div class="tipbox">
+          Tip: In the final build, your eye-tracking layer can “click” a tile after a dwell time or blink.
+          This UI is already structured so gaze selection can trigger the same events as a mouse click.
+          <div id="calStatus" style="margin-top:10px;font-weight:900;">
+            Calibration status: Waiting for camera permission…
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="layout">
+      <!-- LEFT: Communication board -->
+      <section aria-label="Communication board">
+        <h2 style="margin:0 0 10px;">Demo Board</h2>
+
+        <div class="sentenceRow">
+          <div class="sentence" id="sentence" aria-live="polite">
+            <span class="placeholder" id="placeholder">Select a tile or type with the keyboard…</span>
+          </div>
+
+          <!-- Free-typing input (physical keyboard or on-screen keyboard) -->
+          <input class="typedBox" id="typedInput" type="text" placeholder="Type here with the keyboard…" aria-label="Type a word or phrase" />
+
+
+          <div class="controls">
+            <button class="ctrlBtn" id="btnSpeak" type="button">🔊 Speak</button>
+            <button class="ctrlBtn" id="btnUndo" type="button">↩ Undo</button>
+            <button class="ctrlBtn" id="btnClear" type="button">🧹 Clear</button>
+          </div>
+        </div>
+
+        <div class="grid" id="grid">
+          <button class="tile yes" data-word="yes" type="button"><div class="icon">✅</div><div class="label">yes</div></button>
+          <button class="tile no" data-word="no" type="button"><div class="icon">❌</div><div class="label">no</div></button>
+          <button class="tile stop" data-word="stop" type="button"><div class="icon">🛑</div><div class="label">stop</div></button>
+          <button class="tile please" data-word="please" type="button"><div class="icon">🙏</div><div class="label">please</div></button>
+
+          <button class="tile food" data-word="food" type="button"><div class="icon">🍎</div><div class="label">food</div></button>
+          <button class="tile drink" data-word="drink" type="button"><div class="icon">💧</div><div class="label">drink</div></button>
+          <button class="tile more" data-word="more" type="button"><div class="icon">➕</div><div class="label">more</div></button>
+          <button class="tile less" data-word="less" type="button"><div class="icon">➖</div><div class="label">less</div></button>
+        </div>
+
+        <div class="suggestions" aria-label="Auto fill suggestions">
+          <div class="suggestionsHeader">
+            <div class="title">Auto Fill</div>
+            <div class="small">Tap to insert a phrase</div>
+          </div>
+          <div class="suggestList" id="suggestList">
+            <!-- suggestions inserted by JS -->
+          </div>
+        </div>
+<div class="keyboard">
+  <h3 style="margin:12px 0 6px;">On-Screen Keyboard</h3>
+  <div id="kbd"></div>
+</div>
+
+      </section>
+
+    </section>
+    <!-- Audio player used for AWS Polly output -->
+    <audio id="player" controls preload="none" style="width:100%;max-width:780px;display:block;margin:14px 0;"></audio>
+</main>
+
+  <script>
+const TTS_URL = "https://xudvw66852.execute-api.us-east-2.amazonaws.com/Prod/tts";
+
+async function callPollyTTS(buttonId, text, voiceId = "Joanna"){
+  const res = await fetch(TTS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buttonId, text, voiceId })
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `TTS ${res.status}`);
+  return data; // { ok, audioUrl, ... }
+}
+
+// NOTE: removed unused writeTextToS3() stub (it referenced undefined API_BASE/WRITE_PATH).
+
+    // ===== State =====
+    const phrase = [];              // array of words (chips)
+
+    const sentenceEl = document.getElementById("sentence");
+    const placeholderEl = document.getElementById("placeholder");
+    const typedInputEl = document.getElementById("typedInput");
+    const suggestListEl = document.getElementById("suggestList");
+
+    const btnSpeak = document.getElementById("btnSpeak");
+    const btnUndo  = document.getElementById("btnUndo");
+    const btnClear = document.getElementById("btnClear");
+    const btnSpeakHero = document.getElementById("btnSpeakHero");
+
+    // ===== Auto-fill suggestions (simple + relevant to your 8 tiles) =====
+    // You can expand this later or generate dynamically.
+    const suggestions = [
+      "please help",
+      "more please",
+      "less please",
+      "stop please",
+      "food please",
+      "drink please",
+      "yes please",
+      "no thank you"
+    ];
+
+    function renderSuggestions(){
+      suggestListEl.innerHTML = "";
+      for (const s of suggestions){
+        const b = document.createElement("button");
+        b.className = "suggest";
+        b.type = "button";
+        b.innerHTML = "✨ " + s;
+        b.addEventListener("click", () => insertPhrase(s));
+        suggestListEl.appendChild(b);
+      }
+    }
+
+    // ===== Rendering =====
+    function renderSentence(){
+      sentenceEl.innerHTML = "";
+      if (phrase.length === 0){
+        const p = document.createElement("span");
+        p.className = "placeholder";
+        p.textContent = "Select a tile or type with the keyboard…";
+        sentenceEl.appendChild(p);
+        return;
+      }
+      for (const w of phrase){
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.innerHTML = `<span class="mini" aria-hidden="true">💬</span>${escapeHtml(w)}`;
+        sentenceEl.appendChild(chip);
+      }
+    }
+
+    function getTyped(){
+      return (typedInputEl?.value || "");
+    }
+
+    function setTyped(v){
+      if (!typedInputEl) return;
+      typedInputEl.value = v;
+    }
+
+    function escapeHtml(str){
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    // ===== Actions =====
+    // Use AWS Polly as the voice. Keep browser TTS off by default.
+    const selectionSpeechEnabled = false;
+
+    let lastTile = "speak";
+
+    function stopAudio(){
+      const audio = document.getElementById("player");
+      if (!audio) return;
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch (_) {}
+    }
+
+    async function playPollyAudio(buttonId, text){
+      const audio = document.getElementById("player");
+      if (!audio) return;
+
+      stopAudio();
+
+      const out = await callPollyTTS(buttonId, text, "Joanna");
+      if (!out.audioUrl) throw new Error("No audioUrl returned");
+
+      audio.style.display = "block";
+      audio.src = out.audioUrl;
+      audio.load();
+      await audio.play();
+    }
+
+    function announce(text){
+      if (!selectionSpeechEnabled || !text) return;
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    }
+
+    function addWord(word, { announceWord = true } = {}){
+      if (!word) return;
+      phrase.push(word);
+      renderSentence();
+      if (announceWord) announce(word);
+    }
+
+    function insertPhrase(text, { announcePhrase = true } = {}){
+      // Insert multi-word phrase as separate chips
+      const parts = text.split(/\s+/).filter(Boolean);
+      for (const p of parts) phrase.push(p);
+      renderSentence();
+      if (announcePhrase) announce(text);
+    }
+
+    function undo(){
+      // If typed has content, backspace typed first; else pop phrase
+      const t = getTyped();
+      if (t.length > 0){
+        setTyped(t.slice(0, -1));
+        announce("undo");
+        return;
+      }
+      phrase.pop();
+      renderSentence();
+      announce("undo");
+    }
+
+    function clearAll(){
+      phrase.length = 0;
+      setTyped("");
+      window.speechSynthesis?.cancel?.();
+      renderSentence();
+      announce("cleared");
+    }
+
+    function speak(text){
+      if (!text) return;
+      if (!("speechSynthesis" in window)){
+        alert(text);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    }
+
+    async function speakCurrent(){
+      const t = getTyped().trim();
+      const full = [...phrase, ...(t ? [t] : [])].join(" ").trim();
+      if (!full) return;
+
+      try {
+        await playPollyAudio(lastTile || "speak", full);
+        return;
+      } catch (e) {
+        console.error("Polly TTS failed:", e);
+      }
+
+      // Fallback
+      speak(full);
+    }
+
+    // ===== Tile clicks =====
+    document.getElementById("grid").addEventListener("click", async (e) => {
+      const tile = e.target.closest(".tile");
+      if (!tile) return;
+
+      const word = tile.dataset.word;
+      lastTile = word;
+
+      // Add to the message bar
+      addWord(word, { announceWord: false });
+
+      // Speak the selection using Polly immediately
+      try {
+        await playPollyAudio(word, word);
+      } catch (err) {
+        console.error("Polly tile TTS failed:", err);
+      }
+    });
+
+    // ===== Controls =====
+    btnSpeak.addEventListener("click", speakCurrent);
+    btnSpeakHero.addEventListener("click", speakCurrent);
+    btnUndo.addEventListener("click", undo);
+    btnClear.addEventListener("click", clearAll);
+
+    // ===== Keyboard builder =====
+    const keyboardLayout = [
+      ["Q","W","E","R","T","Y","U","I","O","P"],
+      ["A","S","D","F","G","H","J","K","L"],
+      ["Z","X","C","V","B","N","M"],
+    ];
+
+    function addKey(container, label, onClick, className){
+      const k = document.createElement("div");
+      k.className = "key" + (className ? " " + className : "");
+      k.textContent = label;
+      k.tabIndex = 0;
+      k.setAttribute("role","button");
+      k.addEventListener("click", onClick);
+      k.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          onClick();
+        }
+      });
+      container.appendChild(k);
+    }
+
+    function buildKeyboard(){
+      const kbd = document.getElementById("kbd");
+      kbd.innerHTML = "";
+
+      for (const row of keyboardLayout){
+        const r = document.createElement("div");
+        r.className = "kbdRow";
+        for (const letter of row){
+          addKey(r, letter, () => { setTyped(getTyped() + letter.toLowerCase()); });
+        }
+        kbd.appendChild(r);
+      }
+
+      const r2 = document.createElement("div");
+      r2.className = "kbdRow";
+      addKey(r2, "Space", () => { setTyped(getTyped() + " "); }, "xwide");
+      addKey(r2, "Backspace", () => { const t = getTyped(); setTyped(t.slice(0,-1)); }, "wide");
+      addKey(r2, "Enter", () => {
+        const cleaned = getTyped().trim();
+        if (cleaned) addWord(cleaned, { announceWord: false });
+        setTyped("");
+      }, "wide");
+      kbd.appendChild(r2);
+    }
+
+    // ===== Init =====
+    window.iGazeApi = {
+      addWord,
+      undo,
+      clearAll,
+      speakCurrent
+    };
+
+    renderSuggestions();
+    buildKeyboard();
+    renderSentence();
+    // Keep the typed input empty on load
+    setTyped("");
+    window.dispatchEvent(new Event("igaze-ready"));
+  </script>
+</body>
+</html>
