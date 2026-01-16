@@ -377,10 +377,10 @@ height: 80px;
   filter: brightness(1.03);
   box-shadow: 0 10px 22px rgba(15, 62, 92, .14);
 }
-.tile:active{ transform: translateY(1px); }
-.tile:focus-visible{
   outline: 5px solid var(--focus);
   outline-offset: 3px;
+.tile:active{ transform: translateY(1px); }
+.tile:focus-visible{
 }
 .tile .icon{ font-size: 46px; line-height:1; }
 .tile .label{ font-size: 22px; text-transform: lowercase; }
@@ -474,5 +474,31 @@ height: 80px;
 @media (max-width: 980px){
   .instructions{ grid-template-columns: 1fr; }
   .layout{ grid-template-columns: 1fr; }
+
+suggest {
+  border: 1px solid #cfe2f7;
+  background: #ffffff;
+}
+
+/* Styling for the WebGazer video feedback and dot */
+#webgazerVideoContainer { 
+    display: block !important; 
+    position: fixed !important; 
+    top: 0px !important; 
+    left: 0px !important; 
+    width: 320px !important; 
+    height: 240px !important; 
+    z-index: 1000; 
+} 
+
+#webgazerGazeDot { 
+    background-color: red !important; 
+    border-radius: 50%; 
+    position: fixed; 
+    width: 20px; 
+    height: 20px; 
+    z-index: 9999; 
+}
   .grid{ grid-template-columns: repeat(2, minmax(140px, 1fr)); }
 }
+
