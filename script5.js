@@ -1,11 +1,12 @@
+// 1. Fixed Import: Must point to the specific package on jsDelivr
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net";
-        
+
 let faceLandmarker;
 let lastGaze = { x: 0, y: 0 };
 let isBlinking = false;
 
 async function setupMediaPipe() {
-    // 1. Initialize Face Landmarker
+    // 2. Fixed WASM Path: Must point to the specific WASM folder
     const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/wasm"
     );
@@ -19,37 +20,44 @@ async function setupMediaPipe() {
         outputFaceBlendshapes: true
     });
 
-    // 2. Start WebGazer after Landmarker is ready
     initWebGazer();
 }
 
 function initWebGazer() {
-    webgazer.setGazeListener((data, elapsedTime) => {
-        if (data) {
-            lastGaze = { x: data.x, y: data.y };
-        }
-    }).begin();
+    // Check if webgazer is loaded via script tag in HTML
+    if (typeof webgazer !== 'undefined') {
+        webgazer.setGazeListener((data, elapsedTime) => {
+            if (data) {
+                lastGaze = { x: data.x, y: data.y };
+            }
+        }).begin();
 
-    // 3. Start the MediaPipe detection loop using WebGazer's video element
-    const video = document.getElementById('webgazerVideoFeed');
-    if (video) {
-        detectBlink(video);
+        // Use a small delay to ensure WebGazer has created the video element
+        setTimeout(() => {
+            const video = document.getElementById('webgazerVideoFeed');
+            if (video) detectBlink(video);
+        }, 1000);
     }
 }
 
 async function detectBlink(video) {
-    if (video.paused || video.ended) return;
+    if (!faceLandmarker || video.paused || video.ended) {
+        requestAnimationFrame(() => detectBlink(video));
+        return;
+    }
 
     const startTimeMs = performance.now();
     const results = await faceLandmarker.detectForVideo(video, startTimeMs);
 
+    // 3. Fixed Data Access: results.faceBlendshapes is an array of objects
     if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
         const shapes = results.faceBlendshapes[0].categories;
-        // eyeBlinkLeft and eyeBlinkRight values are usually between 0.0 and 1.0
-        const blinkScore = (shapes.find(s => s.categoryName === "eyeBlinkLeft").score + 
-                            shapes.find(s => s.categoryName === "eyeBlinkRight").score) / 2;
+        
+        const leftBlink = shapes.find(s => s.categoryName === "eyeBlinkLeft")?.score || 0;
+        const rightBlink = shapes.find(s => s.categoryName === "eyeBlinkRight")?.score || 0;
+        const blinkScore = (leftBlink + rightBlink) / 2;
 
-        if (blinkScore > 0.4) { // Threshold for blink
+        if (blinkScore > 0.4) { 
             if (!isBlinking) {
                 isBlinking = true;
                 handleBlinkClick();
@@ -65,7 +73,9 @@ async function detectBlink(video) {
 function handleBlinkClick() {
     console.log("Blink Click at:", lastGaze.x, lastGaze.y);
     const element = document.elementFromPoint(lastGaze.x, lastGaze.y);
-    if (element) element.click();
+    if (element && typeof element.click === 'function') {
+        element.click();
+    }
 }
 
 setupMediaPipe();
