@@ -1,4 +1,4 @@
-// 1. Specific ESM import to prevent CORS redirects
+// 1. Fixed Import: Specific version + ESM flag prevents redirects
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net";
 
 let faceLandmarker;
@@ -7,21 +7,21 @@ let isBlinking = false;
 
 async function setupMediaPipe() {
     try {
-        // 2. Specific WASM folder path
+        // 2. Fixed WASM Path: Points to the specific WASM binary folder
         const vision = await FilesetResolver.forVisionTasks(
             "https://cdn.jsdelivr.net"
         );
         
         faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
             baseOptions: {
-                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                modelAssetPath: "https://storage.googleapis.com",
                 delegate: "GPU"
             },
             runningMode: "VIDEO",
             outputFaceBlendshapes: true
         });
 
-        console.log("MediaPipe Ready for 2026");
+        console.log("MediaPipe initialized for 2026.");
         initWebGazer();
     } catch (error) {
         console.error("MediaPipe initialization failed:", error);
