@@ -1,9 +1,4 @@
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net";
-
-// Now FilesetResolver will be defined
-async function setupMediaPipe() {
-    const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/wasm"
         
 let faceLandmarker;
 let lastGaze = { x: 0, y: 0 };
@@ -12,7 +7,7 @@ let isBlinking = false;
 async function setupMediaPipe() {
     // 1. Initialize Face Landmarker
     const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net"
+        "https://cdn.jsdelivr.net/wasm"
     );
     
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
